@@ -35,6 +35,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    labels:
+      - "traefik.enable=true"
+      # Rule: If request host is 'rabbitmq.localhost', send to port 15672
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.localhost`)"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
 
   # --- 3. Caching & Pub/Sub (Redis) ---
   redis:
@@ -55,15 +60,21 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   # --- 5. API Gateway (Traefik) ---
-  # Reverse proxy to route localhost:8080/api/v1/orders -> order-service
   traefik:
-    image: traefik:v2.9
-    command: --api.insecure=true --providers.docker
+    image: traefik:v2.11
+    container_name: fleetcommander-traefik-1
+    command:
+      - "--api.insecure=true"        # Enable Dashboard
+      - "--providers.docker=true"    # Enable Docker Discovery
+      - "--providers.docker.exposedbydefault=false" # Don't expose containers unless they ask
+      - "--entrypoints.web.address=:80" # Define port 80 as 'web'
     ports:
-      - "8080:80"
-      - "8090:8080" # Dashboard
+      - "8080:80"     # Map Host 8080 -> Container 80
+      - "8090:8080"   # Map Host 8090 -> Container Dashboard
+    environment:
+      - DOCKER_CLIENT_API_VERSION=1.41
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only access to socket
 
 volumes:
   postgres_data:
