@@ -4,6 +4,64 @@ import io from 'socket.io-client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+// --- AUTH & ORDERS STATE ---
+const token = ref(null) // Stores the JWT
+const loginForm = ref({ username: 'admin', password: 'password123' })
+const orderForm = ref({ customer: '', destination: '', price: 100 })
+const orderStatus = ref('')
+
+// 1. LOGIN FUNCTION
+const handleLogin = async () => {
+  try {
+    const res = await fetch('http://localhost:3002/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loginForm.value)
+    })
+    
+    if (!res.ok) throw new Error('Login Failed')
+    
+    const data = await res.json()
+    token.value = data.token
+    addLog('🔐 Logged in as Admin')
+  } catch (err) {
+    addLog('❌ Auth Error: Check credentials')
+  }
+}
+
+// 2. DISPATCH ORDER FUNCTION
+const sendOrder = async () => {
+  if (!token.value) return
+
+  try {
+    const res = await fetch('http://localhost:3001/orders', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}` // Send the JWT!
+      },
+      body: JSON.stringify({
+        id: Math.floor(Math.random() * 1000).toString(),
+        customer: orderForm.value.customer,
+        destination: orderForm.value.destination,
+        price: parseInt(orderForm.value.price)
+      })
+    })
+
+    if (!res.ok) throw new Error('Order Failed')
+
+    addLog(`📦 Order Dispatched to ${orderForm.value.destination}`)
+    orderStatus.value = 'Sent!'
+    setTimeout(() => orderStatus.value = '', 2000)
+    
+    // Clear form
+    orderForm.value.customer = ''
+    orderForm.value.destination = ''
+  } catch (err) {
+    addLog('❌ Order Rejected: ' + err.message)
+  }
+}
+
 // --- STATE ---
 const alerts = ref([])
 const connectionStatus = ref('🔴 Disconnected')
@@ -111,6 +169,35 @@ const addLog = (msg) => {
       </div>
 
       <aside class="sidebar">
+        <div class="card command-card">
+          <h3>📦 Dispatch Command</h3>
+          
+          <div v-if="!token" class="login-box">
+            <input v-model="loginForm.username" placeholder="Username" />
+            <input v-model="loginForm.password" type="password" placeholder="Password" />
+            <button @click="handleLogin">ACCESS TERMINAL</button>
+          </div>
+
+          <div v-else class="order-box">
+            <div class="input-group">
+              <label>Customer</label>
+              <input v-model="orderForm.customer" placeholder="e.g. Ikea Industries" />
+            </div>
+            <div class="input-group">
+              <label>Destination</label>
+              <input v-model="orderForm.destination" placeholder="e.g. Bucharest North" />
+            </div>
+            <div class="input-group">
+              <label>Price (€)</label>
+              <input v-model="orderForm.price" type="number" />
+            </div>
+            
+            <button @click="sendOrder" class="dispatch-btn">
+              {{ orderStatus || 'DISPATCH DRIVER' }}
+            </button>
+          </div>
+        </div>
+
         <div class="card stat-card" :class="{ active: selectedId }">
           <h3>
             {{ selectedId ? 'Live Telemetry' : 'No Selection' }}
@@ -196,6 +283,36 @@ h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 15px; color: 
 .fill { height: 100%; background: linear-gradient(90deg, #ffcc00, #ff9900); transition: width 0.5s ease; }
 
 .placeholder-text { color: #666; font-style: italic; text-align: center; padding: 20px 0; }
+
+/* Command Card Styles */
+.command-card input {
+  width: 100%;
+  background: #333;
+  border: 1px solid #444;
+  color: white;
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-sizing: border-box; /* Fix padding width issues */
+}
+
+.command-card button {
+  width: 100%;
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.command-card button:hover { background: #005f9e; }
+
+.input-group { margin-bottom: 8px; }
+.input-group label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+
+.dispatch-btn { background: #28a745 !important; }
+.dispatch-btn:hover { background: #218838 !important; }
 
 /* Logs */
 ul { list-style: none; padding: 0; margin: 0; }

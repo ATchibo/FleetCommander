@@ -8,6 +8,7 @@ import (
 	
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -59,6 +60,13 @@ func main() {
 
 	// 3. Setup Web Server (Fiber)
 	app := fiber.New()
+
+	// --- ENABLE CORS ---
+    app.Use(cors.New(cors.Config{
+        AllowOrigins: "http://localhost:5173", // Allow your Vue App
+        AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+    }))
+    // -------------------
 
 	// THE SHARED SECRET (Must match Auth Service)
     var jwtSecret = []byte("super-secret-fleet-key")
