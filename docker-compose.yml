@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # --- 1. Event Streaming (Kafka) ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # --- 2. Messaging (RabbitMQ) ---
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # Messaging port
+      - "15672:15672" # Management UI (User: guest, Pass: guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  # --- 3. Caching & Pub/Sub (Redis) ---
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # --- 4. Database (PostgreSQL) ---
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fleet_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # --- 5. API Gateway (Traefik) ---
+  # Reverse proxy to route localhost:8080/api/v1/orders -> order-service
+  traefik:
+    image: traefik:v2.9
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "8080:80"
+      - "8090:8080" # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  postgres_data:
