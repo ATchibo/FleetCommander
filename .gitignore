@@ -1,36 +1,42 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# --- General ---
 .DS_Store
-*.pem
+.vscode/
+.idea/
+*.log
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# --- Docker & Infrastructure ---
+# Ignore the local data volumes created by docker-compose
+postgres_data/
+redpanda_data/
+rabbitmq_data/
+redis_data/
 
-# local env files
-.env*.local
+# --- Python Services (Telemetry & FaaS) ---
+# Virtual Environments
+venv/
+env/
 .env
 
-# vercel
-.vercel
+# Bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# --- Node.js Services & Frontend ---
+node_modules/
+dist/
+.npm
+*.local
+
+# --- Go Services (Auth & Order) ---
+# Binaries (if you built them)
+main
+main.exe
+services/auth-service/auth-service
+services/order-service/order-service
+
+# Vendor directory (if you ever use it)
+vendor/
+
+# --- OS Specific ---
+Thumbs.db

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fleet Commander - Live Map</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #0f0; padding: 20px; }
+        .card { border: 1px solid #444; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #111; }
+        h1 { color: #fff; border-bottom: 2px solid #555; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🛰️ Live Fleet Telemetry</h1>
+    <div id="feed">Waiting for satellite link...</div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io("http://localhost:3000");
+        const feed = document.getElementById("feed");
+
+        socket.on("connect", () => {
+            console.log("Connected to WebSocket Server!");
+            feed.innerHTML = "<div>🟢 System Online. Waiting for trucks...</div>";
+        });
+
+        // Listen for the event from server.js
+        socket.on("truck_update", (data) => {
+            const html = `
+                <div class="card">
+                    <strong>🚛 ${data.truck_id}</strong> <br>
+                    Speed: ${data.speed} km/h <br>
+                    Fuel: ${data.fuel}% <br>
+                    Loc: [${data.location.lat.toFixed(4)}, ${data.location.lon.toFixed(4)}]
+                </div>
+            `;
+            // Add to top of list
+            feed.insertAdjacentHTML('afterbegin', html);
+            
+            // Keep list clean (remove old ones)
+            if (feed.children.length > 10) feed.lastElementChild.remove();
+        });
+    </script>
+</body>
+</html>
