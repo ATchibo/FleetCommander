@@ -4,13 +4,10 @@ import io from 'socket.io-client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// --- AUTH & ORDERS STATE ---
-const token = ref(null) // Stores the JWT
+const token = ref(null)
 const loginForm = ref({ username: 'admin', password: 'password123' })
 const orderForm = ref({ customer: '', destination: '', price: 100 })
 const orderStatus = ref('')
-
-// 1. LOGIN FUNCTION
 const handleLogin = async () => {
   try {
     const res = await fetch('http://localhost:3002/login', {
@@ -28,8 +25,6 @@ const handleLogin = async () => {
     addLog('❌ Auth Error: Check credentials')
   }
 }
-
-// 2. DISPATCH ORDER FUNCTION
 const sendOrder = async () => {
   if (!token.value) return
 
@@ -38,7 +33,7 @@ const sendOrder = async () => {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.value}` // Send the JWT!
+        'Authorization': `Bearer ${token.value}`
       },
       body: JSON.stringify({
         id: Math.floor(Math.random() * 1000).toString(),
@@ -54,7 +49,6 @@ const sendOrder = async () => {
     orderStatus.value = 'Sent!'
     setTimeout(() => orderStatus.value = '', 2000)
     
-    // Clear form
     orderForm.value.customer = ''
     orderForm.value.destination = ''
   } catch (err) {
@@ -62,12 +56,9 @@ const sendOrder = async () => {
   }
 }
 
-// --- STATE ---
 const alerts = ref([])
 const connectionStatus = ref('🔴 Disconnected')
-const selectedId = ref(null) // Track which truck user clicked
-
-// Default state for the sidebar
+const selectedId = ref(null)
 const truckStatus = ref({ 
   truck_id: 'Select a Truck...', 
   speed: 0, 
@@ -76,24 +67,21 @@ const truckStatus = ref({
 })
 
 let map = null
-const markers = {} // Dictionary to track all markers
+const markers = {}
 
 onMounted(() => {
-  // 1. Initialize Map
   map = L.map('map').setView([44.4268, 26.1025], 13)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
   }).addTo(map)
 
-  // 2. NEW ICON: Heavy Delivery Truck
   const truckIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554936.png', // <-- New Image
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554936.png',
     iconSize: [46, 46],
-    iconAnchor: [23, 23], // Center the icon
+    iconAnchor: [23, 23],
     popupAnchor: [0, -20]
   })
 
-  // 3. Connect to WebSocket
   const socket = io('http://localhost:3000')
 
   socket.on('connect', () => {
@@ -103,41 +91,32 @@ onMounted(() => {
   socket.on('truck_update', (data) => {
     const { truck_id, location, speed } = data
 
-    // LOGIC: Update sidebar ONLY if this is the currently selected truck
     if (selectedId.value === truck_id) {
        truckStatus.value = data
     }
 
-    // MAP LOGIC
     if (!markers[truck_id]) {
-      // Create new marker
       const newMarker = L.marker([location.lat, location.lon], { icon: truckIcon })
         .addTo(map)
         .bindPopup(`<b>${truck_id}</b>`)
 
-      // ADD CLICK EVENT: Select this truck when clicked
       newMarker.on('click', () => {
         selectedId.value = truck_id
-        truckStatus.value = data // Update sidebar instantly
+        truckStatus.value = data
         addLog(`Monitoring: ${truck_id.substring(0,8)}`)
         
-        // Highlight the marker (optional visual cue)
         newMarker.openPopup()
       })
 
-      // Save to dictionary
       markers[truck_id] = newMarker
       addLog(`New Truck Found: ${truck_id.substring(0,8)}`)
     } else {
-      // Move existing marker
       const newLatLng = new L.LatLng(location.lat, location.lon)
       markers[truck_id].setLatLng(newLatLng)
       
-      // Update popup content dynamically
       markers[truck_id].setPopupContent(`<b>${truck_id}</b><br>Speed: ${speed} km/h`)
     }
 
-    // Global Alert (shows regardless of selection)
     if (speed > 100) {
        addLog(`⚠️ Speeding: ${truck_id.substring(0,8)} (${speed} km/h)`)
     }
